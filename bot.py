@@ -3,11 +3,12 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Load .env file
+# Load .env only for local development
+load_dotenv()
 
-# Use your actual token here or load from .env if using
-BOT_TOKEN = os.getenv("BOT_TOKEN") 
-# Start message and menu
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Must be set in Render environment variables
+
+# Start menu
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🔍 View Investment Deals", callback_data='deals')],
@@ -27,6 +28,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "What would you like to explore?",
         reply_markup=reply_markup
     )
+
 
 # Handle button clicks
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -75,7 +77,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]))
 
     elif query.data == 'back':
-       keyboard = [
+        keyboard = [
             [InlineKeyboardButton("🔍 View Investment Deals", callback_data='deals')],
             [InlineKeyboardButton("🏢 Launch Your Product (B2B)", callback_data='b2b')],
             [InlineKeyboardButton("💼 How to Invest", callback_data='invest')],
@@ -85,17 +87,19 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🤝 Referral Program", url='https://yourwebsite.com/referral')],
             [InlineKeyboardButton("📄 Partnership Deck", url='https://yourwebsite.com/partnership.pdf')],
         ]
-    await query.edit_message_text(
+        await query.edit_message_text(
             "👋 Back to Main Menu:\n\n"
             "We're a licensed investment platform offering access to:\n"
             "🌐 Venture Capital | 🏢 Real Estate | 📈 ETFs\n\n"
             "What would you like to explore?",
             reply_markup=InlineKeyboardMarkup(keyboard)
-     )
+        )
 
 
 # Launch bot
 if __name__ == '__main__':
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN is not set. Please add it to environment variables.")
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_buttons))
