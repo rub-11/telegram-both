@@ -1,6 +1,9 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from dotenv import load_dotenv
 import os
+
+load_dotenv()  # Load .env file
 
 # Use your actual token here or load from .env if using
 BOT_TOKEN = os.getenv("BOT_TOKEN") 
