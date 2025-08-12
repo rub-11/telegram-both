@@ -1,6 +1,0 @@
-services:
-  - type: worker
-    name: telegram-bot
-    env: python
-    pythonVersion: 3.11.9
-    startCommand: python bot.py
