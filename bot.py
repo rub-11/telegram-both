@@ -3,7 +3,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import os
 
 # Use your actual token here or load from .env if using
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN") 
 # Start message and menu
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
