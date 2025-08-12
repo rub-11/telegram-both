@@ -6,7 +6,7 @@ import os
 # Load .env only for local development
 load_dotenv()
 
-BOT_TOKEN = os.getenv("7666891851:AAEOWa_d25aJZRIqvw2nUQiYqggIJiinHvI")  # Must be set in Render environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Must be set in Render environment variables
 
 # Start menu
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
