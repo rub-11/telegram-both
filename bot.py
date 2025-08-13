@@ -12,19 +12,31 @@ print(API_URL)
 # =========================
 # Fetch and parse menu data
 # =========================
-async def fetch_menu_items():
+
+MENU_ITEMS = [
+    {"id": 2, "name": "🔍 View Investment Deals", "link": "http://telegram-bot.test/menu/view-investment-deals/", "parent": 0},
+    {"id": 12, "name": "🚀 Space / AI / Robotics", "link": "http://telegram-bot.test/menu/space-ai-robotics/", "parent": 2},
+    {"id": 3, "name": "🏢 Launch Your Product (B2B)", "link": "http://telegram-bot.test/menu/launch-your-product-b2b/", "parent": 0},
+    {"id": 4, "name": "💼 How to Invest", "link": "http://telegram-bot.test/menu/how-to-invest/", "parent": 0},
+    {"id": 5, "name": "🧑‍💼 Contact a Manager", "link": "http://telegram-bot.test/menu/contact-a-manage/", "parent": 0},
+    {"id": 6, "name": "💸 Fees", "link": "http://telegram-bot.test/menu/fees/", "parent": 0},
+    {"id": 8, "name": "Download Pdf", "link": "http://telegram-bot.test/menu/download-pdf/", "parent": 2},
+    {"id": 11, "name": "🤝 Referral Program", "link": "http://telegram-bot.test/menu/referral-program/", "parent": 0}
+]
+
+""" async def fetch_menu_items():
     async with aiohttp.ClientSession() as session:
         async with session.get(API_URL) as resp:
             if resp.status == 200:
                 return await resp.json()
-            return []
+            return [] """
 
 # =========================
 # Build keyboard for a given parent
 # =========================
 def build_keyboard(menu_items, parent_id=0):
     buttons = []
-    for item in menu_items:
+    for item in MENU_ITEMS:
         if item["parent"] == parent_id:
             name = item["name"]
             # If it has children, show as callback
@@ -43,8 +55,8 @@ def build_keyboard(menu_items, parent_id=0):
 # /start command
 # ===============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    menu_items = await fetch_menu_items()
-    keyboard = build_keyboard(menu_items, parent_id=0)
+
+    keyboard = build_keyboard(MENU_ITEMS, parent_id=0)
     await update.message.reply_text(
         "👋 Welcome to the Telegram Bot Menu:",
         reply_markup=keyboard
@@ -58,10 +70,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     selected_id = int(query.data)
 
-    menu_items = await fetch_menu_items()
-    keyboard = build_keyboard(menu_items, parent_id=selected_id)
 
-    title = next((item["name"] for item in menu_items if item["id"] == selected_id), "Menu")
+    keyboard = build_keyboard(MENU_ITEMS, parent_id=selected_id)
+
+    title = next((item["name"] for item in MENU_ITEMS if item["id"] == selected_id), "Menu")
     await query.edit_message_text(
         f"📋 {title}",
         reply_markup=keyboard
