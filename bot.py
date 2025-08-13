@@ -65,7 +65,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'contact':
         keyboard = [
             [InlineKeyboardButton("📞 Request Call", url='https://calendly.com/nvbmanager')],
-            [InlineKeyboardButton("❓ Ask a Question", url='https://t.me/nvbmanager')],
+            [InlineKeyboardButton("❓ Ask a Question", url='https://t.me/ruben_sh11')],
             [InlineKeyboardButton("📅 Book Zoom", url='https://zoom.us/yourlink')],
             [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
         ]
