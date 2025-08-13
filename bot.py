@@ -1,105 +1,78 @@
+import os
+import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from dotenv import load_dotenv
-import os
 
-# Load .env only for local development
 load_dotenv()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Must be set in Render environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+API_URL = "http://telegram-bot.test/wp-json/wp/v2/menu"
 
-# Start menu
+# =========================
+# Fetch and parse menu data
+# =========================
+async def fetch_menu_items():
+    async with aiohttp.ClientSession() as session:
+        async with session.get(API_URL) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            return []
+
+# =========================
+# Build keyboard for a given parent
+# =========================
+def build_keyboard(menu_items, parent_id=0):
+    buttons = []
+    for item in menu_items:
+        if item["parent"] == parent_id:
+            name = item["name"]
+            # If it has children, show as callback
+            has_children = any(child["parent"] == item["id"] for child in menu_items)
+            if has_children:
+                button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
+            else:
+                button = InlineKeyboardButton(text=name, url=item["link"])
+            buttons.append([button])  # One per row
+    # Add back button if not root
+    if parent_id != 0:
+        buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
+    return InlineKeyboardMarkup(buttons)
+
+# ===============
+# /start command
+# ===============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🔍 View Investment Deals", callback_data='deals')],
-        [InlineKeyboardButton("🏢 Launch Your Product (B2B)", callback_data='b2b')],
-        [InlineKeyboardButton("💼 How to Invest", callback_data='invest')],
-        [InlineKeyboardButton("📚 Learn & Explore", callback_data='learn')],
-        [InlineKeyboardButton("🧑‍💼 Contact a Manager", callback_data='contact')],
-        [InlineKeyboardButton("💸 Fees", url='https://tabclix.com/ruben-hayrapetyan')],
-        [InlineKeyboardButton("🤝 Referral Program", url='https://yourwebsite.com/referral')],
-        [InlineKeyboardButton("📄 Partnership Deck", url='https://tabclix.com/ruben-hayrapetyan.pdf')],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    menu_items = await fetch_menu_items()
+    keyboard = build_keyboard(menu_items, parent_id=0)
     await update.message.reply_text(
-        "👋 Welcome to New Venture Brokerage!\n\n"
-        "We're a licensed investment platform offering access to:\n"
-        "🌐 Venture Capital | 🏢 Real Estate | 📈 ETFs\n\n"
-        "What would you like to explore?",
-        reply_markup=reply_markup
+        "👋 Welcome to the Telegram Bot Menu:",
+        reply_markup=keyboard
     )
 
-
+# =======================
 # Handle button clicks
+# =======================
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    selected_id = int(query.data)
 
-    if query.data == 'deals':
-        keyboard = [
-            [InlineKeyboardButton("🚀 Space / AI / Robotics", url='https://yourwebsite.com/deals')],
-            [InlineKeyboardButton("🧠 Neuralink Deal", url='https://yourwebsite.com/deals/neuralink')],
-            [InlineKeyboardButton("📞 Request Call", url='https://calendly.com/nvbmanager')],
-            [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
-        ]
-        await query.edit_message_text("📊 Our current private market opportunities:", reply_markup=InlineKeyboardMarkup(keyboard))
+    menu_items = await fetch_menu_items()
+    keyboard = build_keyboard(menu_items, parent_id=selected_id)
 
-    elif query.data == 'b2b':
-        keyboard = [
-            [InlineKeyboardButton("📝 Become a Deal Provider", url='https://yourwebsite.com/b2b')],
-            [InlineKeyboardButton("📘 Step-by-Step Guide", url='https://yourwebsite.com/b2b-guide')],
-            [InlineKeyboardButton("📞 Request Demo Call", url='https://calendly.com/nvbmanager')],
-            [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
-        ]
-        await query.edit_message_text("🏢 Launch your own product with NVB:", reply_markup=InlineKeyboardMarkup(keyboard))
+    title = next((item["name"] for item in menu_items if item["id"] == selected_id), "Menu")
+    await query.edit_message_text(
+        f"📋 {title}",
+        reply_markup=keyboard
+    )
 
-    elif query.data == 'invest':
-        keyboard = [
-            [InlineKeyboardButton("✅ Start KYC", url='https://yourwebsite.com/kyc')],
-            [InlineKeyboardButton("📞 Talk to Manager", url='https://t.me/gyulnara')],
-            [InlineKeyboardButton("📊 Access Terminal", url='https://yourwebsite.com/terminal')],
-            [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
-        ]
-        await query.edit_message_text("💼 How to Invest with NVB:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif query.data == 'contact':
-        keyboard = [
-            [InlineKeyboardButton("📞 Request Call", url='https://calendly.com/nvbmanager')],
-            [InlineKeyboardButton("❓ Ask a Question", url='https://t.me/ruben_sh11')],
-            [InlineKeyboardButton("📅 Book Zoom", url='https://zoom.us/yourlink')],
-            [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
-        ]
-        await query.edit_message_text("🧑‍💼 Contact our team:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif query.data == 'learn':
-        await query.edit_message_text("📚 Educational content is coming soon!", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("⬅ Back to Menu", callback_data='back')]
-        ]))
-
-    elif query.data == 'back':
-        keyboard = [
-            [InlineKeyboardButton("🔍 View Investment Deals", callback_data='deals')],
-            [InlineKeyboardButton("🏢 Launch Your Product (B2B)", callback_data='b2b')],
-            [InlineKeyboardButton("💼 How to Invest", callback_data='invest')],
-            [InlineKeyboardButton("📚 Learn & Explore", callback_data='learn')],
-            [InlineKeyboardButton("🧑‍💼 Contact a Manager", callback_data='contact')],
-            [InlineKeyboardButton("💸 Fees", url='https://tabclix.com/ruben-hayrapetyan')],
-            [InlineKeyboardButton("🤝 Referral Program", url='https://yourwebsite.com/referral')],
-            [InlineKeyboardButton("📄 Partnership Deck", url='https://yourwebsite.com/partnership.pdf')],
-        ]
-        await query.edit_message_text(
-            "👋 Back to Main Menu:\n\n"
-            "We're a licensed investment platform offering access to:\n"
-            "🌐 Venture Capital | 🏢 Real Estate | 📈 ETFs\n\n"
-            "What would you like to explore?",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-
-# Launch bot
+# ==========
+# Run Bot
+# ==========
 if __name__ == '__main__':
     if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is not set. Please add it to environment variables.")
+        raise ValueError("BOT_TOKEN is not set in environment.")
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_buttons))
