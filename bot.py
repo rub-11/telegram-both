@@ -8,7 +8,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_URL = "http://telegram-bot.test/wp-json/wp/v2/menu"
-
+print(API_URL)
 # =========================
 # Fetch and parse menu data
 # =========================
