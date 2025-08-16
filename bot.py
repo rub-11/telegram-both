@@ -62,6 +62,8 @@ async def build_keyboard(menu_items, parent_id=0):
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
+def get_menu_item_by_id(menu_items, item_id):
+    return next((item for item in menu_items if item["id"] == item_id), None)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
