@@ -1,6 +1,7 @@
 import os
 import io
 import aiohttp
+from urllib.parse import urlparse, unquote
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
@@ -50,14 +51,11 @@ async def build_keyboard(menu_items, parent_id=0):
             row_buttons = []
 
             if has_children:
-                # Submenu button
                 row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
             else:
-                # URL button
                 url = await resolve_url(item)
                 row_buttons.append(InlineKeyboardButton(text=name, url=url))
 
-            # Add download button if file exists
             if upload_file and isinstance(upload_file, int):
                 row_buttons.append(InlineKeyboardButton(text="⬇ Download file", callback_data=f"dl_{item['id']}"))
 
@@ -98,19 +96,18 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if upload_file and isinstance(upload_file, int):
             file_url = await fetch_file_url(upload_file)
             if file_url:
+                # Extract filename from URL preserving extension
+                path = urlparse(file_url).path
+                filename = os.path.basename(unquote(path))
+
                 async with aiohttp.ClientSession() as session:
                     async with session.get(file_url) as resp:
                         if resp.status == 200:
                             file_bytes = await resp.read()
                             file_like = io.BytesIO(file_bytes)
-                            # Use original file name or fallback
-                            file_name = selected_item["name"]
-                            if not file_name.lower().endswith((".docx", ".pdf", ".txt", ".zip")):
-                                # Optionally add extension or default .bin if unknown
-                                file_name += ".bin"
-                            file_like.name = file_name
+                            file_like.name = filename
 
-                            await query.message.reply_document(document=file_like, filename=file_name)
+                            await query.message.reply_document(document=file_like, filename=filename)
                             return
                         else:
                             await query.edit_message_text("⚠️ Failed to download file.")
@@ -119,7 +116,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("⚠️ Could not retrieve the file URL.")
                 return
 
-    # Handle normal menu navigation
+    # Normal menu navigation
     try:
         selected_id = int(data)
     except ValueError:
