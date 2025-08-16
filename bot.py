@@ -22,8 +22,7 @@ async def fetch_menu_data():
             else:
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
-
-async def fetch_media_url(media_id: int) -> str:
+async def fetch_file_url(media_id: int) -> str:
     url = f"https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/media/{media_id}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -31,9 +30,8 @@ async def fetch_media_url(media_id: int) -> str:
                 data = await response.json()
                 return data.get("source_url", "")
             else:
-                print(f"Failed to fetch image media {media_id}: {response.status}")
+                print(f"Failed to fetch media {media_id}: {response.status}")
                 return ""
-
 
 async def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
@@ -64,44 +62,19 @@ async def build_keyboard(menu_items, parent_id=0):
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
-def get_menu_item_by_id(menu_items, item_id):
-    return next((item for item in menu_items if item["id"] == item_id), None)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
-    parent_id = 0
-    keyboard = await build_keyboard(menu_data, parent_id=parent_id)
-
-    item = get_menu_item_by_id(menu_data, parent_id)
-    if item:
-        image_url = await get_image_url(item)
-        if image_url:
-            await update.message.reply_photo(photo=image_url)
-
+    keyboard = build_keyboard(menu_data, parent_id=0)
     await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     selected_id = int(query.data)
-    keyboard = await build_keyboard(menu_data, parent_id=selected_id)
-
-    item = get_menu_item_by_id(menu_data, selected_id)
-    title = item["name"] if item else "Menu"
-
-    if item:
-        image_url = await get_image_url(item)
-        if image_url:
-            await query.message.reply_photo(photo=image_url)
-
+    keyboard = build_keyboard(menu_data, parent_id=selected_id)
+    title = next((item["name"] for item in menu_data if item["id"] == selected_id), "Menu")
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
-
-
-async def get_image_url(item):
-    image_id = item["acf"].get("image")
-    if isinstance(image_id, int):
-        return await fetch_media_url(image_id)
-    return None
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
