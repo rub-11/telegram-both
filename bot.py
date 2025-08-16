@@ -26,12 +26,16 @@ async def fetch_menu_data():
 
 def resolve_url(item):
     """Return the correct URL for a menu item."""
-    if item["name"] == "Download Pdf" and item["acf"].get("upload_file"):
-        upload_id = item["acf"]["upload_file"]
-        return UPLOAD_FILE_URLS.get(upload_id, item["link"])
-    if item["acf"].get("url"):
+    upload_file = item["acf"].get("upload_file")
+
+    if item["name"] == "Download Pdf" and isinstance(upload_file, int):
+        return UPLOAD_FILE_URLS.get(upload_file, item["link"])
+
+    if isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
+
     return item["link"]
+
 
 def build_keyboard(menu_items, parent_id=0):
     buttons = []
