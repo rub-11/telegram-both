@@ -68,10 +68,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parent_id = 0
     keyboard = await build_keyboard(menu_data, parent_id=parent_id)
 
-    # Get main menu item (optional image display)
     item = get_menu_item_by_id(menu_data, parent_id)
-    if item and item["acf"].get("image"):
-        await update.message.reply_photo(photo=item["acf"]["image"])
+    if item:
+        image_url = await get_image_url(item)
+        if image_url:
+            await update.message.reply_photo(photo=image_url)
 
     await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
@@ -83,16 +84,20 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     item = get_menu_item_by_id(menu_data, selected_id)
     title = item["name"] if item else "Menu"
-    image_url = get_image_url(item) if item else None
 
-    if image_url:
-        await query.message.reply_photo(photo=image_url)
+    if item:
+        image_url = await get_image_url(item)
+        if image_url:
+            await query.message.reply_photo(photo=image_url)
 
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
 
-def get_menu_item_by_id(menu_items, item_id):
-    return next((item for item in menu_items if item["id"] == item_id), None)
 
+async def get_image_url(item):
+    image_id = item["acf"].get("image")
+    if isinstance(image_id, int):
+        return await fetch_media_url(image_id)
+    return None
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
