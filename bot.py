@@ -22,7 +22,8 @@ async def fetch_menu_data():
             else:
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
-async def fetch_file_url(media_id: int) -> str:
+
+async def fetch_media_url(media_id: int) -> str:
     url = f"https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/media/{media_id}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -30,8 +31,9 @@ async def fetch_file_url(media_id: int) -> str:
                 data = await response.json()
                 return data.get("source_url", "")
             else:
-                print(f"Failed to fetch media {media_id}: {response.status}")
+                print(f"Failed to fetch image media {media_id}: {response.status}")
                 return ""
+
 
 async def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
