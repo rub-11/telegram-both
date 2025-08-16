@@ -1,4 +1,5 @@
 import os
+import io
 import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -62,6 +63,8 @@ async def build_keyboard(menu_items, parent_id=0):
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
+import io
+
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -80,9 +83,20 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if upload_file and isinstance(upload_file, int):
         file_url = await fetch_file_url(upload_file)
         if file_url:
-            await query.message.reply_document(document=file_url, filename=selected_item["name"])
-            await query.edit_message_text(f"📤 Sent file: {selected_item['name']}")
-            return
+            # Download the file content yourself
+            async with aiohttp.ClientSession() as session:
+                async with session.get(file_url) as resp:
+                    if resp.status == 200:
+                        file_bytes = await resp.read()
+                        file_like = io.BytesIO(file_bytes)
+                        file_like.name = selected_item["name"]  # Telegram needs filename attribute
+
+                        await query.message.reply_document(document=file_like, filename=selected_item["name"])
+                        await query.edit_message_text(f"📤 Sent file: {selected_item['name']}")
+                        return
+                    else:
+                        await query.edit_message_text("⚠️ Failed to download file.")
+                        return
         else:
             await query.edit_message_text("⚠️ Could not retrieve the file URL.")
             return
