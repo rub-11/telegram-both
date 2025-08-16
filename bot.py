@@ -80,7 +80,14 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     selected_id = int(query.data)
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
-    title = next((item["name"] for item in menu_data if item["id"] == selected_id), "Menu")
+
+    item = get_menu_item_by_id(menu_data, selected_id)
+    title = item["name"] if item else "Menu"
+    image_url = get_image_url(item) if item else None
+
+    if image_url:
+        await query.message.reply_photo(photo=image_url)
+
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
 
 def get_menu_item_by_id(menu_items, item_id):
