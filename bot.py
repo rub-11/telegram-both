@@ -33,7 +33,7 @@ async def fetch_file_url(media_id: int) -> str:
                 print(f"Failed to fetch media {media_id}: {response.status}")
                 return ""
 
-def resolve_url(item):
+async def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
 
     if upload_file and isinstance(upload_file, int):
@@ -42,9 +42,11 @@ def resolve_url(item):
     elif isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
 
-    return item["acf"]["call_back"]
+    else:
+        return item["link"]
 
-def build_keyboard(menu_items, parent_id=0):
+
+async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
         if item["parent"] == parent_id:
@@ -53,25 +55,37 @@ def build_keyboard(menu_items, parent_id=0):
             if has_children:
                 button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
             else:
-                url = resolve_url(item)
+                url = await resolve_url(item)
                 button = InlineKeyboardButton(text=name, url=url)
             buttons.append([button])
     if parent_id != 0:
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
-    keyboard = build_keyboard(menu_data, parent_id=0)
+    parent_id = 0
+    keyboard = await build_keyboard(menu_data, parent_id=parent_id)
+
+    # Get main menu item (optional image display)
+    item = get_menu_item_by_id(menu_data, parent_id)
+    if item and item["acf"].get("image"):
+        await update.message.reply_photo(photo=item["acf"]["image"])
+
     await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     selected_id = int(query.data)
-    keyboard = build_keyboard(menu_data, parent_id=selected_id)
+    keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = next((item["name"] for item in menu_data if item["id"] == selected_id), "Menu")
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
+
+def get_menu_item_by_id(menu_items, item_id):
+    return next((item for item in menu_items if item["id"] == item_id), None)
+
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
