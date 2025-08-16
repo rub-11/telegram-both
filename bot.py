@@ -22,17 +22,27 @@ async def fetch_menu_data():
             else:
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
+async def fetch_file_url(media_id: int) -> str:
+    url = f"https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/media/{media_id}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data.get("source_url", "")
+            else:
+                print(f"Failed to fetch media {media_id}: {response.status}")
+                return ""
 
 def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
 
-    if item["name"] == "Download Pdf" and isinstance(upload_file, int):
-        return UPLOAD_FILE_URLS.get(upload_file, item["link"])
+    if upload_file and isinstance(upload_file, int):
+        return await fetch_file_url(upload_file)
 
-    if isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
+    else isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
 
-    return item["link"]
+    return item["acf"]["call_back"]
 
 def build_keyboard(menu_items, parent_id=0):
     buttons = []
