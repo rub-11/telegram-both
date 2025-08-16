@@ -32,7 +32,7 @@ def resolve_url(item):
     if isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
 
-    return item["acf"]["call_back"]
+    return item["link"]
 
 def build_keyboard(menu_items, parent_id=0):
     buttons = []
