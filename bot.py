@@ -6,10 +6,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MENU_API_URL = "https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/menu"
 
-UPLOAD_FILE_URLS = {
-    18: "http://telegram-bot.test/wp-content/uploads/2025/08/Telegram-bot-content-final-updated-05.08.2025-to-be-reviewed-and-implement.docx"
-}
-
 # Global menu cache
 menu_data = []
 
@@ -22,6 +18,7 @@ async def fetch_menu_data():
             else:
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
+
 async def fetch_file_url(media_id: int) -> str:
     url = f"https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/media/{media_id}"
     async with aiohttp.ClientSession() as session:
@@ -45,7 +42,6 @@ async def resolve_url(item):
     else:
         return item["link"]
 
-
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
@@ -62,17 +58,19 @@ async def build_keyboard(menu_items, parent_id=0):
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
-    keyboard = build_keyboard(menu_data, parent_id=0)
+    keyboard = await build_keyboard(menu_data, parent_id=0)
     await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    selected_id = int(query.data)
-    keyboard = build_keyboard(menu_data, parent_id=selected_id)
+    try:
+        selected_id = int(query.data)
+    except (ValueError, TypeError):
+        selected_id = 0  # fallback to main menu if parsing fails
+    keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = next((item["name"] for item in menu_data if item["id"] == selected_id), "Menu")
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
 
@@ -83,6 +81,4 @@ if __name__ == "__main__":
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_buttons))
-
-    # 🚫 No asyncio.run() here!
     app.run_polling()
