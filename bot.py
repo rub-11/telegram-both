@@ -38,13 +38,21 @@ async def resolve_url(item):
     else:
         return item["link"]
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await fetch_menu_data()
+    keyboard = await build_keyboard(menu_data, parent_id=0)
+    await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
+
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
         if item["parent"] == parent_id:
             name = item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
+            upload_file = item["acf"].get("upload_file")
             if has_children:
+                button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
+            elif upload_file and isinstance(upload_file, int):
                 button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
             else:
                 url = await resolve_url(item)
@@ -53,11 +61,6 @@ async def build_keyboard(menu_items, parent_id=0):
     if parent_id != 0:
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await fetch_menu_data()
-    keyboard = await build_keyboard(menu_data, parent_id=0)
-    await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -87,6 +90,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = selected_item["name"]
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
+
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
