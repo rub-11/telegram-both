@@ -1,18 +1,16 @@
 import os
 import aiohttp
-import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MENU_API_URL = "https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/menu"
 
-# Replace with real file URLs mapped to upload_file ID from ACF
 UPLOAD_FILE_URLS = {
     18: "http://telegram-bot.test/wp-content/uploads/2025/08/Telegram-bot-content-final-updated-05.08.2025-to-be-reviewed-and-implement.docx"
 }
 
-# Global variable to cache menu
+# Global menu cache
 menu_data = []
 
 async def fetch_menu_data():
@@ -23,9 +21,9 @@ async def fetch_menu_data():
                 menu_data = await response.json()
             else:
                 print(f"Failed to fetch menu: {response.status}")
+                menu_data = []
 
 def resolve_url(item):
-    """Return the correct URL for a menu item."""
     upload_file = item["acf"].get("upload_file")
 
     if item["name"] == "Download Pdf" and isinstance(upload_file, int):
@@ -35,7 +33,6 @@ def resolve_url(item):
         return item["acf"]["url"]
 
     return item["link"]
-
 
 def build_keyboard(menu_items, parent_id=0):
     buttons = []
@@ -69,8 +66,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set in environment variables")
+
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_buttons))
-    asyncio.run(fetch_menu_data())  # Preload menu data at startup
+
+    # 🚫 No asyncio.run() here!
     app.run_polling()
