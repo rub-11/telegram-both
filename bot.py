@@ -6,7 +6,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MENU_API_URL = "https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/menu"
 
-# Global menu cache
 menu_data = []
 
 async def fetch_menu_data():
@@ -32,13 +31,10 @@ async def fetch_file_url(media_id: int) -> str:
 
 async def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
-
     if upload_file and isinstance(upload_file, int):
         return await fetch_file_url(upload_file)
-
     elif isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
-
     else:
         return item["link"]
 
@@ -69,9 +65,27 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         selected_id = int(query.data)
     except (ValueError, TypeError):
-        selected_id = 0  # fallback to main menu if parsing fails
+        selected_id = 0
+
+    selected_item = next((item for item in menu_data if item["id"] == selected_id), None)
+    if selected_item is None:
+        keyboard = await build_keyboard(menu_data, parent_id=0)
+        await query.edit_message_text("📋 Main Menu", reply_markup=keyboard)
+        return
+
+    upload_file = selected_item["acf"].get("upload_file")
+    if upload_file and isinstance(upload_file, int):
+        file_url = await fetch_file_url(upload_file)
+        if file_url:
+            await query.message.reply_document(document=file_url, filename=selected_item["name"])
+            await query.edit_message_text(f"📤 Sent file: {selected_item['name']}")
+            return
+        else:
+            await query.edit_message_text("⚠️ Could not retrieve the file URL.")
+            return
+
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
-    title = next((item["name"] for item in menu_data if item["id"] == selected_id), "Menu")
+    title = selected_item["name"]
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
 
 if __name__ == "__main__":
