@@ -39,7 +39,7 @@ def resolve_url(item):
     if upload_file and isinstance(upload_file, int):
         return await fetch_file_url(upload_file)
 
-    else isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
+    elif isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
 
     return item["acf"]["call_back"]
