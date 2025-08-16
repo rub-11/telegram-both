@@ -39,11 +39,6 @@ async def resolve_url(item):
     else:
         return item["link"]
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await fetch_menu_data()
-    keyboard = await build_keyboard(menu_data, parent_id=0)
-    await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
-
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
@@ -51,60 +46,95 @@ async def build_keyboard(menu_items, parent_id=0):
             name = item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
             upload_file = item["acf"].get("upload_file")
+
+            row_buttons = []
+
             if has_children:
-                button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
-            elif upload_file and isinstance(upload_file, int):
-                button = InlineKeyboardButton(text=name, callback_data=str(item["id"]))
+                # Submenu button
+                row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
             else:
+                # URL button
                 url = await resolve_url(item)
-                button = InlineKeyboardButton(text=name, url=url)
-            buttons.append([button])
+                row_buttons.append(InlineKeyboardButton(text=name, url=url))
+
+            # Add download button if file exists
+            if upload_file and isinstance(upload_file, int):
+                row_buttons.append(InlineKeyboardButton(text="⬇ Download file", callback_data=f"dl_{item['id']}"))
+
+            buttons.append(row_buttons)
+
     if parent_id != 0:
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
-import io
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await fetch_menu_data()
+    keyboard = await build_keyboard(menu_data, parent_id=0)
+    await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    try:
-        selected_id = int(query.data)
-    except (ValueError, TypeError):
-        selected_id = 0
+    data = query.data
 
-    selected_item = next((item for item in menu_data if item["id"] == selected_id), None)
-    if selected_item is None:
+    if data == "0":
         keyboard = await build_keyboard(menu_data, parent_id=0)
         await query.edit_message_text("📋 Main Menu", reply_markup=keyboard)
         return
 
-    upload_file = selected_item["acf"].get("upload_file")
-    if upload_file and isinstance(upload_file, int):
-        file_url = await fetch_file_url(upload_file)
-        if file_url:
-            # Download the file content yourself
-            async with aiohttp.ClientSession() as session:
-                async with session.get(file_url) as resp:
-                    if resp.status == 200:
-                        file_bytes = await resp.read()
-                        file_like = io.BytesIO(file_bytes)
-                        file_like.name = selected_item["name"]  # Telegram needs filename attribute
-
-                        await query.message.reply_document(document=file_like, filename=selected_item["name"])
-                        await query.edit_message_text(f"📤 Sent file: {selected_item['name']}")
-                        return
-                    else:
-                        await query.edit_message_text("⚠️ Failed to download file.")
-                        return
-        else:
-            await query.edit_message_text("⚠️ Could not retrieve the file URL.")
+    if data.startswith("dl_"):
+        try:
+            item_id = int(data[3:])
+        except ValueError:
+            await query.edit_message_text("⚠️ Invalid download request.")
             return
+
+        selected_item = next((item for item in menu_data if item["id"] == item_id), None)
+        if not selected_item:
+            await query.edit_message_text("⚠️ Item not found.")
+            return
+
+        upload_file = selected_item["acf"].get("upload_file")
+        if upload_file and isinstance(upload_file, int):
+            file_url = await fetch_file_url(upload_file)
+            if file_url:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(file_url) as resp:
+                        if resp.status == 200:
+                            file_bytes = await resp.read()
+                            file_like = io.BytesIO(file_bytes)
+                            # Use original file name or fallback
+                            file_name = selected_item["name"]
+                            if not file_name.lower().endswith((".docx", ".pdf", ".txt", ".zip")):
+                                # Optionally add extension or default .bin if unknown
+                                file_name += ".bin"
+                            file_like.name = file_name
+
+                            await query.message.reply_document(document=file_like, filename=file_name)
+                            return
+                        else:
+                            await query.edit_message_text("⚠️ Failed to download file.")
+                            return
+            else:
+                await query.edit_message_text("⚠️ Could not retrieve the file URL.")
+                return
+
+    # Handle normal menu navigation
+    try:
+        selected_id = int(data)
+    except ValueError:
+        await query.edit_message_text("⚠️ Invalid selection.")
+        return
+
+    selected_item = next((item for item in menu_data if item["id"] == selected_id), None)
+    if not selected_item:
+        keyboard = await build_keyboard(menu_data, parent_id=0)
+        await query.edit_message_text("📋 Main Menu", reply_markup=keyboard)
+        return
 
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = selected_item["name"]
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
-
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
