@@ -10,12 +10,30 @@ MENU_API_URL = "https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2
 
 menu_data = []
 
+# --- Patch function to insert missing parent categories ---
+def patch_missing_parents(data):
+    existing_ids = {item["id"] for item in data}
+    used_parents = {item["parent"] for item in data if item["parent"] != 0}
+    missing_parents = used_parents - existing_ids
+
+    for parent_id in missing_parents:
+        data.append({
+            "id": parent_id,
+            "name": f"Category {parent_id}",
+            "parent": 0,
+            "acf": {"upload_file": "", "url": ""},
+            "link": "#",
+        })
+    return data
+
+# --- Fetch menu data and apply patch ---
 async def fetch_menu_data():
     global menu_data
     async with aiohttp.ClientSession() as session:
         async with session.get(MENU_API_URL) as response:
             if response.status == 200:
-                menu_data = await response.json()
+                data = await response.json()
+                menu_data = patch_missing_parents(data)
             else:
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
@@ -40,13 +58,13 @@ async def resolve_url(item):
     else:
         return item["link"]
 
-async def build_keyboard(menu_items, parent_id=0, depth=0):
+# --- Only show children for selected parent; no recursion ---
+async def build_keyboard(menu_items, parent_id=0):
     buttons = []
-    indent = "  " * depth  # just visual spacing for nested items
 
     for item in menu_items:
         if item["parent"] == parent_id:
-            name = indent + item["name"]
+            name = item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
             upload_file = item["acf"].get("upload_file")
 
@@ -62,16 +80,12 @@ async def build_keyboard(menu_items, parent_id=0, depth=0):
 
             buttons.append(row_buttons)
 
-            # Recursively add children below current item
-            child_buttons = await build_keyboard(menu_items, parent_id=item["id"], depth=depth + 1)
-            buttons.extend(child_buttons.inline_keyboard)
+    if parent_id != 0:
+        buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
 
-    if parent_id == 0:
-        return InlineKeyboardMarkup(buttons)
-    else:
-        return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(buttons)
 
-
+# --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
     keyboard = await build_keyboard(menu_data, parent_id=0)
@@ -103,7 +117,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if upload_file and isinstance(upload_file, int):
             file_url = await fetch_file_url(upload_file)
             if file_url:
-                # Extract filename from URL preserving extension
                 path = urlparse(file_url).path
                 filename = os.path.basename(unquote(path))
 
@@ -123,7 +136,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("⚠️ Could not retrieve the file URL.")
                 return
 
-    # Normal menu navigation
     try:
         selected_id = int(data)
     except ValueError:
@@ -140,6 +152,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title = selected_item["name"]
     await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
 
+# --- Run the bot ---
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set in environment variables")
