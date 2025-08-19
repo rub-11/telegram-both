@@ -42,7 +42,10 @@ async def resolve_url(item):
 
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
+    print(f"Building keyboard for parent_id: {parent_id}")
     for item in menu_items:
+         print(f"Item: {item['name']} | Parent: {item['parent']}")
+
         if item["parent"] == parent_id:
             name = item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
