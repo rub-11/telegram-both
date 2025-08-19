@@ -45,18 +45,20 @@ async def build_keyboard(menu_items, parent_id=0):
     for item in menu_items:
         if item["parent"] == parent_id:
             name = item["name"]
+            description = item["description"]["rendered"] if "description" in item else ""
             has_children = any(child["parent"] == item["id"] for child in menu_items)
             upload_file = item["acf"].get("upload_file")
 
             row_buttons = []
 
             if has_children:
-                row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
-                row_buttons.append(InlineKeyboardButton(text=description, callback_data=str(item["id"])))
-
+                row_buttons.append(
+                    InlineKeyboardButton(text=name, callback_data=str(item["id"]))
+                )
             elif upload_file and isinstance(upload_file, int):
-                 row_buttons.append(InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}"))
-
+                row_buttons.append(
+                    InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}")
+                )
             else:
                 url = await resolve_url(item)
                 row_buttons.append(InlineKeyboardButton(text=name, url=url))
@@ -66,6 +68,7 @@ async def build_keyboard(menu_items, parent_id=0):
     if parent_id != 0:
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
