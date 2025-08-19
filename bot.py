@@ -69,7 +69,18 @@ async def build_keyboard(menu_items, parent_id=0):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
     keyboard = await build_keyboard(menu_data, parent_id=0)
-    await update.message.reply_text("👋 Welcome to the Telegram Bot Menu:", reply_markup=keyboard)
+    await update.message.reply_text(
+        "👋 Welcome to New Venture Brokerage!\n\n"
+        "New Venture Brokerage CJSC is a licensed provider of brokerage, dealer, custody, and underwriting services, "
+        "holding license \\#ՆԸ 0028 issued by the Central Bank of Armenia. The company's mission is to create an accessible "
+        "and transparent private market, enabling individuals to buy and sell private equity in some of the world's most "
+        "innovative companies. It aims to provide quality and reliable services to investors in private markets, adhering "
+        "to international standards and fostering strong relationships with clients and partners.\n\n"
+        "We specialize in venture capital, securities, and structured financial instruments. We are proud to say that we "
+        "serve as a bridging link between investors from Armenia and abroad and leading companies worldwide that have "
+        "already made a significant impact in their respective industries.",
+        reply_markup=keyboard
+    )
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
