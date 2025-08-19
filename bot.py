@@ -5,11 +5,16 @@ from urllib.parse import urlparse, unquote
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
+# Environment variable
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# API endpoint
 MENU_API_URL = "https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/menu?per_page=100"
 
+# Global menu data cache
 menu_data = []
 
+# Fetch menu from WordPress
 async def fetch_menu_data():
     global menu_data
     async with aiohttp.ClientSession() as session:
@@ -20,6 +25,7 @@ async def fetch_menu_data():
                 print(f"Failed to fetch menu: {response.status}")
                 menu_data = []
 
+# Fetch file URL by media ID
 async def fetch_file_url(media_id: int) -> str:
     url = f"https://darkcyan-seahorse-221994.hostingersite.com/wp-json/wp/v2/media/{media_id}"
     async with aiohttp.ClientSession() as session:
@@ -31,6 +37,7 @@ async def fetch_file_url(media_id: int) -> str:
                 print(f"Failed to fetch media {media_id}: {response.status}")
                 return ""
 
+# Resolve appropriate URL for a menu item
 async def resolve_url(item):
     upload_file = item["acf"].get("upload_file")
     if upload_file and isinstance(upload_file, int):
@@ -40,6 +47,7 @@ async def resolve_url(item):
     else:
         return item["link"]
 
+# Build the inline keyboard
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
@@ -51,11 +59,13 @@ async def build_keyboard(menu_items, parent_id=0):
             row_buttons = []
 
             if has_children:
-                row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
-
+                row_buttons.append(
+                    InlineKeyboardButton(text=name, callback_data=str(item["id"]))
+                )
             elif upload_file and isinstance(upload_file, int):
-                 row_buttons.append(InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}"))
-
+                row_buttons.append(
+                    InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}")
+                )
             else:
                 url = await resolve_url(item)
                 row_buttons.append(InlineKeyboardButton(text=name, url=url))
@@ -66,9 +76,11 @@ async def build_keyboard(menu_items, parent_id=0):
         buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
     return InlineKeyboardMarkup(buttons)
 
+# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
     keyboard = await build_keyboard(menu_data, parent_id=0)
+
     await update.message.reply_text(
         "👋 Welcome to New Venture Brokerage!\n\n"
         "New Venture Brokerage CJSC is a licensed provider of brokerage, dealer, custody, and underwriting services, "
@@ -82,16 +94,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
+# Button handler
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
 
+    # Back to main menu
     if data == "0":
         keyboard = await build_keyboard(menu_data, parent_id=0)
         await query.edit_message_text("📋 Main Menu", reply_markup=keyboard)
         return
 
+    # Download handler
     if data.startswith("dl_"):
         try:
             item_id = int(data[3:])
@@ -108,7 +123,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if upload_file and isinstance(upload_file, int):
             file_url = await fetch_file_url(upload_file)
             if file_url:
-                # Extract filename from URL preserving extension
+                # Extract filename
                 path = urlparse(file_url).path
                 filename = os.path.basename(unquote(path))
 
@@ -128,7 +143,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("⚠️ Could not retrieve the file URL.")
                 return
 
-    # Normal menu navigation
+    # Normal navigation
     try:
         selected_id = int(data)
     except ValueError:
@@ -141,10 +156,15 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("📋 Main Menu", reply_markup=keyboard)
         return
 
+    # Build submenu
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = selected_item["name"]
-    await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
+    description = selected_item.get("description", {}).get("rendered", "")
+    text = f"📋 *{title}*\n\n{description}"
 
+    await query.edit_message_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+# Main runner
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set in environment variables")
