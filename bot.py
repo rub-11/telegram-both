@@ -40,30 +40,37 @@ async def resolve_url(item):
     else:
         return item["link"]
 
-async def build_keyboard(menu_items, parent_id=0):
+async def build_keyboard(menu_items, parent_id=0, depth=0):
     buttons = []
+    indent = "  " * depth  # just visual spacing for nested items
+
     for item in menu_items:
         if item["parent"] == parent_id:
-            name = item["name"]
+            name = indent + item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
             upload_file = item["acf"].get("upload_file")
 
             row_buttons = []
 
             if has_children:
-                row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
+                row_buttons.append(InlineKeyboardButton(text="📂 " + name, callback_data=str(item["id"])))
             elif upload_file and isinstance(upload_file, int):
-                 row_buttons.append(InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}"))
-
+                row_buttons.append(InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}"))
             else:
                 url = await resolve_url(item)
-                row_buttons.append(InlineKeyboardButton(text=name, url=url))
+                row_buttons.append(InlineKeyboardButton(text="🔗 " + name, url=url))
 
             buttons.append(row_buttons)
 
-    if parent_id != 0:
-        buttons.append([InlineKeyboardButton("⬅ Back to Main Menu", callback_data="0")])
-    return InlineKeyboardMarkup(buttons)
+            # Recursively add children below current item
+            child_buttons = await build_keyboard(menu_items, parent_id=item["id"], depth=depth + 1)
+            buttons.extend(child_buttons.inline_keyboard)
+
+    if parent_id == 0:
+        return InlineKeyboardMarkup(buttons)
+    else:
+        return InlineKeyboardMarkup(buttons)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await fetch_menu_data()
