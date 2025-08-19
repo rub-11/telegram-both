@@ -52,6 +52,7 @@ async def build_keyboard(menu_items, parent_id=0):
 
             if has_children:
                 row_buttons.append(InlineKeyboardButton(text=name, callback_data=str(item["id"])))
+                row_buttons.append(InlineKeyboardButton(text=description, callback_data=str(item["id"])))
 
             elif upload_file and isinstance(upload_file, int):
                  row_buttons.append(InlineKeyboardButton(text="⬇ " + name, callback_data=f"dl_{item['id']}"))
