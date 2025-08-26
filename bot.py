@@ -143,7 +143,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = await build_keyboard(menu_data, parent_id=selected_id)
     title = selected_item["name"]
-    await query.edit_message_text(f"📋 {title}", reply_markup=keyboard)
+    description = selected_item["description"]
+    await query.edit_message_text(f"📋 *{title}*\n\n_{description}_", reply_markup=keyboard, parse_mode="Markdown")
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
