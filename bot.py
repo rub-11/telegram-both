@@ -147,7 +147,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is not set in environment variables")
+        raise ValueError("BOT_TOKEN is not set in environment variable")
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
