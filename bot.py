@@ -38,13 +38,14 @@ async def resolve_url(item):
     elif isinstance(item["acf"].get("url"), str) and item["acf"]["url"].strip():
         return item["acf"]["url"]
     else:
-        return false
+        return item["link"]
 
 async def build_keyboard(menu_items, parent_id=0):
     buttons = []
     for item in menu_items:
-
-        if item["parent"] == parent_id:
+        if item["acf"].get("showhide") is False:
+                continue
+        elif item["parent"] == parent_id:
             name = item["name"]
             has_children = any(child["parent"] == item["id"] for child in menu_items)
             upload_file = item["acf"].get("upload_file")
